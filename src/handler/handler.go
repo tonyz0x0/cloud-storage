@@ -28,7 +28,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// acept file stream and store to local
 		file, head, err := r.FormFile("file")
 		if err != nil {
-			fmt.Print("Failed to get data, err: %s", err.Error())
+			fmt.Printf("Failed to get data, err: %s", err.Error())
 			return
 		}
 		defer file.Close()
@@ -41,20 +41,20 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		newFile, err := os.Create(fileMeta.Location)
 		if err != nil {
-			fmt.Print("Failed to create file, err:%s\n", err.Error())
+			fmt.Printf("Failed to create file, err:%s\n", err.Error())
 			return
 		}
 		defer newFile.Close()
 
 		fileMeta.FileSize, err = io.Copy(newFile, file)
 		if err != nil {
-			fmt.Print("Failed to save data into file, err: %s", err.Error())
+			fmt.Printf("Failed to save data into file, err: %s", err.Error())
 			return
 		}
 
 		newFile.Seek(0, 0)
 		fileMeta.FileSha1 = util.FileSha1(newFile)
-		fmt.Print("New File Created: %s", fileMeta.FileSha1)
+		fmt.Printf("New File Created: %s", fileMeta.FileSha1)
 		meta.UpdateFileMeta(fileMeta)
 
 		http.Redirect(w, r, "/file/upload/success", http.StatusFound)
@@ -77,5 +77,31 @@ func GetFileMetaHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Write(data)
+}
+
+// DownloadHandler
+func DownloadHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	fsha1 := r.Form.Get("filehash")
+	fmt.Print(r.Form)
+	fm := meta.GetFileMeta(fsha1)
+
+	f, err := os.Open(fm.Location)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	defer f.Close()
+
+	// Only for small file, otherwise use data stream
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream") // a binary file
+	w.Header().Set("Content-Disposition", "attachment;filename=\""+fm.FileName+"\"")
 	w.Write(data)
 }
