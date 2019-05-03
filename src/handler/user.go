@@ -96,10 +96,48 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp.JSONBytes())
 }
 
+func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse the Request Parameters
+	r.ParseForm()
+	username := r.Form.Get("username")
+	token := r.Form.Get("token")
+
+	// Verify Token
+	isValidToken := IsTokenValid(token)
+	if !isValidToken {
+		w.WriteHeader(http.StatusForbidden)
+	}
+
+	// Query User Info
+	user, err := dblayer.GetUserInfo(username)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	// Response with User Info
+	resp := util.RespMsg{
+		Code: 0,
+		Msg:  "OK",
+		Data: user,
+	}
+	w.Write(resp.JSONBytes())
+}
+
 // GenToken
 func GenToken(username string) string {
 	// Token Rule: md5(username + timestamp + token_salt)+timestamp[:8] -> 40 bytes
 	ts := fmt.Sprintf("%x", time.Now().Unix())
 	tokenPrefix := util.MD5([]byte(username + ts + "_tokensalt"))
 	return tokenPrefix + ts[:8]
+}
+
+// IsTokenValid: Verify the token is valid or not
+func IsTokenValid(token string) bool {
+	// TODO: Verify Token's validity period
+	// Get Token from Database and check whether they are the same
+	if len(token) != 40 {
+		return false
+	}
+	return true
 }
