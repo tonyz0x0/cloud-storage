@@ -32,3 +32,12 @@ CREATE TABLE `tbl_user` (
   UNIQUE KEY `idx_username` (`user_name`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
+
+-- User Token Table
+CREATE TABLE `tbl_user_token` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_name` varchar(64) NOT NULL DEFAULT '' COMMENT 'User Name',
+  `user_token` char(40) NOT NULL DEFAULT '' COMMENT 'User Sign In Token',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `idx_username` (`user_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
