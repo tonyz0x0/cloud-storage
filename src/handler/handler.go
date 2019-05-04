@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	dblayer "cloud-storage/db"
 	"cloud-storage/src/meta"
 	"cloud-storage/src/util"
 )
@@ -59,7 +60,16 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// meta.UpdateFileMeta(fileMeta)
 		meta.UpdateFileMetaDB(fileMeta)
 
-		http.Redirect(w, r, "/file/upload/success", http.StatusFound)
+		//Update User File Table in Database
+		r.ParseForm()
+		username := r.Form.Get("username")
+		suc := dblayer.OnUserFileUploadFinished(username, fileMeta.FileSha1,
+			fileMeta.FileName, fileMeta.FileSize)
+		if suc {
+			http.Redirect(w, r, "/static/view/home.html", http.StatusFound)
+		} else {
+			w.Write([]byte("Upload Failed."))
+		}
 	}
 }
 
