@@ -53,7 +53,6 @@ CREATE TABLE `tbl_user_file` (
   `last_update` datetime DEFAULT CURRENT_TIMESTAMP 
           ON UPDATE CURRENT_TIMESTAMP COMMENT 'Updated Time',
   `status` int(11) NOT NULL DEFAULT '0' COMMENT 'State(0 is Enable, 1 is Deleted, 2 is Disable)',
-  UNIQUE KEY `idx_user_file` (`user_name`, `file_sha1`),
   KEY `idx_status` (`status`),
   KEY `idx_user_id` (`user_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

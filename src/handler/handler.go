@@ -186,3 +186,51 @@ func FileDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+// TryFastUploadHandler: Try XSpeed Upload
+func TryFastUploadHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	//Parse Parameters
+	username := r.Form.Get("username")
+	filehash := r.Form.Get("filehash")
+	filename := r.Form.Get("filename")
+	filesize, _ := strconv.Atoi(r.Form.Get("filesize"))
+
+	//Query File Records with Same Hash Value From File Table
+	fileMeta, err := meta.GetFileMetaDB(filehash)
+	if err != nil {
+		fmt.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//If records not found, failed to XSpeed Upload and go to normal upload
+	if fileMeta.FileSha1 == "" {
+		resp := util.RespMsg{
+			Code: -1,
+			Msg:  "Failed to XSpeed Upload, redirect to Normal Upload",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	}
+
+	// If records found, XSpeed Upload is activated, update records in User File Table
+	// return Success
+	suc := dblayer.OnUserFileUploadFinished(
+		username, filehash, filename, int64(filesize))
+	if suc {
+		resp := util.RespMsg{
+			Code: 0,
+			Msg:  "XSpeed Upload SUCCESS",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	}
+	resp := util.RespMsg{
+		Code: -2,
+		Msg:  "Failed to XSpeed Upload，pleas try later",
+	}
+	w.Write(resp.JSONBytes())
+	return
+}
