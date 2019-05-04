@@ -6,6 +6,16 @@ import (
 	mydb "cloud-storage/db/mysql"
 )
 
+// User Model
+type User struct {
+	Username     string
+	Email        string
+	Phone        string
+	SignupAt     string
+	LastActiveAt string
+	Status       int
+}
+
 // UserSignup: User Sign Up
 func UserSignup(username string, passwd string) bool {
 	stmt, err := mydb.DBConn().Prepare(
@@ -73,15 +83,6 @@ func UpdateToken(username string, token string) bool {
 		return false
 	}
 	return true
-}
-
-type User struct {
-	Username     string
-	Email        string
-	Phone        string
-	SignupAt     string
-	LastActiveAt string
-	Status       int
 }
 
 // GetUserInfo: Query User Info

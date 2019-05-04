@@ -23,7 +23,7 @@ func main() {
 
 	http.HandleFunc("/user/signup", handler.SignUpHandler)
 	http.HandleFunc("/user/signin", handler.SignInHandler)
-	http.HandleFunc("/user/info", handler.UserInfoHandler)
+	http.HandleFunc("/user/info", handler.HTTPInterceptor(handler.UserInfoHandler))
 
 	fmt.Println("Upload Server is running, listening on port 8080...")
 	err := http.ListenAndServe(":8080", nil)
