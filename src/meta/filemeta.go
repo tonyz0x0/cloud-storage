@@ -1,6 +1,9 @@
 package meta
 
 import (
+	"fmt"
+	"sort"
+
 	mydb "../../db"
 )
 
@@ -52,6 +55,26 @@ func GetFileMetaDB(fileSha1 string) (FileMeta, error) {
 		Location: tfile.FileAddr.String,
 	}
 	return fmeta, nil
+}
+
+// GetLastFileMetas: Get batch FileMeta of number K
+func GetLastFileMetas(count int) []FileMeta {
+	// sort so the updatest will be on the first
+	fmt.Println(fileMetas)
+	fMetaArray := make([]FileMeta, len(fileMetas))
+	for _, v := range fileMetas {
+		fMetaArray = append(fMetaArray, v)
+	}
+
+	// make sure the fMetaArray is sorted by UploadAt
+	// Customized sort rule
+	sort.Sort(ByUploadTime(fMetaArray))
+	return fMetaArray[0:count]
+}
+
+// TODO: GetLastFileMetasDB: Get batch FileMeta of number K from DB
+func GetLastFileMetasDB(count int) []FileMeta {
+	return nil
 }
 
 func RemoveFileMeta(fileSha1 string) {

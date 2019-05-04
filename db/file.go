@@ -29,7 +29,7 @@ func OnFileUploadFinished(
 	}
 	if rf, err := ret.RowsAffected(); nil == err {
 		if rf <= 0 {
-			fmt.Printf("File with hash:%s has been uploaded before", filehash)
+			fmt.Printf("\nFile with hash:%s has been uploaded previously", filehash)
 		}
 		return true
 	}
