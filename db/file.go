@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	mydb "../db/mysql"
+	mydb "cloud-storage/db/mysql"
 )
 
 // OnFileUploadFinished: File upload completed

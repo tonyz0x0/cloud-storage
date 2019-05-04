@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	dblayer "../../db"
-	"../util"
+	dblayer "cloud-storage/db"
+
+	"cloud-storage/src/util"
 )
 
 const (

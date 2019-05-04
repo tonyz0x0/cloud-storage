@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"../meta"
-	"../util"
+	"cloud-storage/src/meta"
+	"cloud-storage/src/util"
 )
 
 /**

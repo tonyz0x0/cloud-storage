@@ -6,7 +6,8 @@ import (
 	"log"
 	"os"
 
-	cfg "../../config"
+	cfg "cloud-storage/config"
+
 	_ "github.com/go-sql-driver/mysql" // annonymous import
 )
 

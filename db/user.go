@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	mydb "./mysql"
+	mydb "cloud-storage/db/mysql"
 )
 
 // UserSignup: User Sign Up
