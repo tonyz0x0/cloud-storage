@@ -41,3 +41,19 @@ CREATE TABLE `tbl_user_token` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `idx_username` (`user_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- User File Table
+CREATE TABLE `tbl_user_file` (
+  `id` int(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  `user_name` varchar(64) NOT NULL,
+  `file_sha1` varchar(64) NOT NULL DEFAULT '' COMMENT 'File Hash',
+  `file_size` bigint(20) DEFAULT '0' COMMENT 'File Size',
+  `file_name` varchar(256) NOT NULL DEFAULT '' COMMENT 'File Name',
+  `upload_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Upload Time',
+  `last_update` datetime DEFAULT CURRENT_TIMESTAMP 
+          ON UPDATE CURRENT_TIMESTAMP COMMENT 'Updated Time',
+  `status` int(11) NOT NULL DEFAULT '0' COMMENT 'State(0 is Enable, 1 is Deleted, 2 is Disable)',
+  UNIQUE KEY `idx_user_file` (`user_name`, `file_sha1`),
+  KEY `idx_status` (`status`),
+  KEY `idx_user_id` (`user_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
