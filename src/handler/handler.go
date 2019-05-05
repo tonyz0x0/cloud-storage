@@ -118,39 +118,6 @@ func FileQueryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-// DownloadHandler
-func DownloadHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-
-	fsha1 := r.Form.Get("filehash")
-	username := r.Form.Get("username")
-
-	// fm := meta.GetFileMeta(fsha1)
-	fm, _ := meta.GetFileMetaDB(fsha1)
-	userFile, err := dblayer.QueryUserFileMeta(username, fsha1)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	f, err := os.Open(fm.Location)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	defer f.Close()
-
-	// Only for small file, otherwise use data stream
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/octet-stream") // a binary file
-	w.Header().Set("Content-Disposition", "attachment;filename=\""+userFile.FileName+"\"")
-	w.Write(data)
-}
-
 // FileMetaUpdateHandler: Update FileName
 func FileMetaUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
