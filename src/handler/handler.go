@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"bytes"
+	"cloud-storage/src/mq"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -18,6 +21,20 @@ import (
 	"cloud-storage/src/store/oss"
 	"cloud-storage/src/util"
 )
+
+func init() {
+	// Directory is existed
+	if _, err := os.Stat(cfg.TempLocalRootDir); err == nil {
+		return
+	}
+
+	// Try to create directory
+	err := os.MkdirAll(cfg.TempLocalRootDir, 0744)
+	if err != nil {
+		log.Println(err.Error())
+		os.Exit(1)
+	}
+}
 
 /**
  * Handle upload
@@ -39,12 +56,23 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
+		// Convert File Content to byte array
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, file); err != nil {
+			fmt.Printf("Failed to get file data, err:%s\n", err.Error())
+			return
+		}
+
+		// Construct File Meta Info
 		fileMeta := meta.FileMeta{
 			FileName: head.Filename,
-			Location: cfg.TempLocalRootDir + head.Filename,
+			FileSha1: util.Sha1(buf.Bytes()),
+			FileSize: int64(len(buf.Bytes())),
 			UploadAt: time.Now().Format("2006-01-02 15:04:05"),
 		}
 
+		// Write File Content to temp local storage location
+		fileMeta.Location = cfg.TempLocalRootDir + fileMeta.FileSha1
 		newFile, err := os.Create(fileMeta.Location)
 		if err != nil {
 			fmt.Printf("Failed to create file, err:%s\n", err.Error())
@@ -52,14 +80,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer newFile.Close()
 
-		fileMeta.FileSize, err = io.Copy(newFile, file)
-		if err != nil {
-			fmt.Printf("Failed to save data into file, err: %s", err.Error())
+		nByte, err := newFile.Write(buf.Bytes())
+		if int64(nByte) != fileMeta.FileSize || err != nil {
+			fmt.Printf("Failed to save data into file, writtenSize:%d, err:%s\n", nByte, err.Error())
 			return
 		}
-
-		newFile.Seek(0, 0)
-		fileMeta.FileSha1 = util.FileSha1(newFile)
 
 		// Store into Ceph/OSS
 		newFile.Seek(0, 0)
@@ -70,19 +95,37 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 			_ = ceph.PutObject("userfile", cephPath, data)
 			fileMeta.Location = cephPath
 		} else if cfg.CurrentStoreType == cmn.StoreOSS {
-			// Write File into OSS
 			ossPath := "oss/" + fileMeta.FileSha1
-			err = oss.Bucket().PutObject(ossPath, newFile)
-			if err != nil {
-				fmt.Println(err.Error())
-				w.Write([]byte("Upload failed!"))
-				return
+			if !cfg.AsyncTransferEnable {
+				// Write File into OSS Synchronously
+				err = oss.Bucket().PutObject(ossPath, newFile)
+				if err != nil {
+					fmt.Println(err.Error())
+					w.Write([]byte("Upload failed!"))
+					return
+				}
+				fileMeta.Location = ossPath
+			} else {
+				data := mq.TransferData{
+					FileHash:      fileMeta.FileSha1,
+					CurLocation:   fileMeta.Location,
+					DestLocation:  ossPath,
+					DestStoreType: cmn.StoreOSS,
+				}
+				pubData, _ := json.Marshal(data)
+				pubSuc := mq.Publish(
+					cfg.TransExchangeName,
+					cfg.TransOSSRoutingKey,
+					pubData,
+				)
+				if !pubSuc {
+					// TODO: Fail to Publish, Retry later
+				}
 			}
-			fileMeta.Location = ossPath
 		}
 		fmt.Printf("\nNew File %s Created in %s", fileMeta.FileSha1, fileMeta.Location)
 		// meta.UpdateFileMeta(fileMeta)
-		meta.UpdateFileMetaDB(fileMeta)
+		_ = meta.UpdateFileMetaDB(fileMeta)
 
 		//Update User File Table in Database
 		r.ParseForm()

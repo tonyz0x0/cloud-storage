@@ -150,3 +150,29 @@ func OnFileRemoved(filehash string) bool {
 	}
 	return false
 }
+
+func UpdateFileLocation(
+	filehash string,
+	fileaddr string,
+) bool {
+	stmt, err := mydb.DBConn().Prepare(
+		"update tbl_file set`file_addr`=? where  `file_sha1`=? limit 1")
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+	defer stmt.Close()
+
+	ret, err := stmt.Exec(fileaddr, filehash)
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+	if rf, err := ret.RowsAffected(); nil == err {
+		if rf <= 0 {
+			fmt.Printf("Failed to Update File location, FileHash: %s", filehash)
+		}
+		return true
+	}
+	return false
+}

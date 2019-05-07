@@ -85,3 +85,13 @@ docker run -d --net=host --privileged=true --name=ceph-rgw -v /var/lib/ceph/:/va
 
 ## OSS
 
+## RabbitMQ
+
+```sh
+# Username: guest, Passowrd: guest
+$ mkdir -p /data/rabbitmq
+$ sudo chmod 755 /data/rabbitmq/
+
+# Remember to config path /data to file sharing in docker
+$ docker run -d --hostname rabbit-node1 --name rabbit-node1 -p 5672:5672 -p 15672:15672 -p 25672:25672 -v /data/rabbitmq:/var/lib/rabbitmq rabbitmq:management
+```
