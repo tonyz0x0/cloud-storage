@@ -10,8 +10,12 @@ import (
 	"strconv"
 	"time"
 
+	cfg "cloud-storage/config"
 	dblayer "cloud-storage/db"
+	cmn "cloud-storage/src/common"
 	"cloud-storage/src/meta"
+	"cloud-storage/src/store/ceph"
+	"cloud-storage/src/store/oss"
 	"cloud-storage/src/util"
 )
 
@@ -56,7 +60,27 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		newFile.Seek(0, 0)
 		fileMeta.FileSha1 = util.FileSha1(newFile)
-		fmt.Printf("\nNew File Created: %s", fileMeta.FileSha1)
+
+		// Store into Ceph/OSS
+		newFile.Seek(0, 0)
+		if cfg.CurrentStoreType == cmn.StoreCeph {
+			// Write File into Ceph
+			data, _ := ioutil.ReadAll(newFile)
+			cephPath := "/ceph/" + fileMeta.FileSha1
+			_ = ceph.PutObject("userfile", cephPath, data)
+			fileMeta.Location = cephPath
+		} else if cfg.CurrentStoreType == cmn.StoreOSS {
+			// Write File into OSS
+			ossPath := "oss/" + fileMeta.FileSha1
+			err = oss.Bucket().PutObject(ossPath, newFile)
+			if err != nil {
+				fmt.Println(err.Error())
+				w.Write([]byte("Upload failed!"))
+				return
+			}
+			fileMeta.Location = ossPath
+		}
+		fmt.Printf("\nNew File %s Created in %s", fileMeta.FileSha1, fileMeta.Location)
 		// meta.UpdateFileMeta(fileMeta)
 		meta.UpdateFileMetaDB(fileMeta)
 

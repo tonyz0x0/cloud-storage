@@ -82,3 +82,6 @@ docker exec ceph-mon ceph auth get client.bootstrap-rgw -o /var/lib/ceph/bootstr
 docker run -d --net=host --privileged=true --name=ceph-rgw -v /var/lib/ceph/:/var/lib/ceph/ -v /etc/ceph:/etc/ceph -v /etc/localtime:/etc/localtime:ro -e RGW_NAME=rgw0 ceph/daemon rgw
 
 ```
+
+## OSS
+
