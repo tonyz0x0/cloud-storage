@@ -21,8 +21,7 @@ func main() {
 	http.HandleFunc("/file/download/range", handler.HTTPInterceptor(handler.RangeDownloadHandler))
 	http.HandleFunc("/file/update", handler.HTTPInterceptor(handler.FileMetaUpdateHandler))
 	http.HandleFunc("/file/delete", handler.HTTPInterceptor(handler.FileDeleteHandler))
-	http.HandleFunc("/file/downloadurl", handler.HTTPInterceptor(
-		handler.DownloadURLHandler))
+	http.HandleFunc("/file/downloadurl", handler.HTTPInterceptor(handler.DownloadURLHandler))
 
 	// XSpeed Upload
 	http.HandleFunc("/file/fastupload", handler.HTTPInterceptor(

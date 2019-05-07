@@ -36,3 +36,21 @@ func Bucket() *oss.Bucket {
 	}
 	return nil
 }
+
+// DownloadURL: Generate Download URL
+func DownloadURL(objName string) string {
+	signedURL, err := Bucket().SignURL(objName, oss.HTTPGet, 3600)
+	if err != nil {
+		fmt.Println(err.Error())
+		return ""
+	}
+	return signedURL
+}
+
+// BuildLifecycleRule: Set Life cycle rule for Bucket
+func BuildLifecycleRule(bucketName string) {
+	ruleTest1 := oss.BuildLifecycleRuleByDays("rule1", "test/", true, 30)
+	rules := []oss.LifecycleRule{ruleTest1}
+
+	Client().SetBucketLifecycle(bucketName, rules)
+}
