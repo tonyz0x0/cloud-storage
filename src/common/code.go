@@ -15,6 +15,8 @@ const (
 	StatusRegisterFailed
 	// StatusLoginFailed : 10004
 	StatusLoginFailed
-	// StatusInvalidToken : 10005
-	StatusInvalidToken
+	// StatusTokenInvalid : 10005
+	StatusTokenInvalid
+	// StatusUserNotExists: 10006
+	StatusUserNotExists
 )

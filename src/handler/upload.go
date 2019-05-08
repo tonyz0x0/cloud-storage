@@ -20,6 +20,8 @@ import (
 	"cloud-storage/src/store/ceph"
 	"cloud-storage/src/store/oss"
 	"cloud-storage/src/util"
+
+	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -36,132 +38,161 @@ func init() {
 	}
 }
 
-/**
- * Handle upload
- */
-func UploadHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		// return upload page
-		data, err := ioutil.ReadFile("./static/view/index.html")
-		if err != nil {
-			io.WriteString(w, "internel server error")
-		}
-		io.WriteString(w, string(data))
-	} else if r.Method == "POST" {
-		// acept file stream and store to local
-		file, head, err := r.FormFile("file")
-		if err != nil {
-			fmt.Printf("Failed to get data, err: %s", err.Error())
-			return
-		}
-		defer file.Close()
+// UploadHandler
+func UploadHandler(c *gin.Context) {
+	data, err := ioutil.ReadFile("./static/view/index.html")
+	if err != nil {
+		c.String(404, `Page Not Found`)
+	}
+	c.Data(http.StatusOK, "text/html; charset=utf-8", data)
+}
 
-		// Convert File Content to byte array
-		buf := bytes.NewBuffer(nil)
-		if _, err := io.Copy(buf, file); err != nil {
-			fmt.Printf("Failed to get file data, err:%s\n", err.Error())
-			return
+// DoUploadHandler
+func DoUploadHandler(c *gin.Context) {
+	errCode := 0
+	defer func() {
+		if errCode < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"code": errCode,
+				"msg":  "Upload failed",
+			})
 		}
+	}()
+	// acept file stream and store to local
+	file, head, err := c.Request.FormFile("file")
+	if err != nil {
+		fmt.Printf("Failed to get data, err: %s", err.Error())
+		errCode = -1
+		return
+	}
+	defer file.Close()
 
-		// Construct File Meta Info
-		fileMeta := meta.FileMeta{
-			FileName: head.Filename,
-			FileSha1: util.Sha1(buf.Bytes()),
-			FileSize: int64(len(buf.Bytes())),
-			UploadAt: time.Now().Format("2006-01-02 15:04:05"),
-		}
+	// Convert File Content to byte array
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, file); err != nil {
+		fmt.Printf("Failed to get file data, err:%s\n", err.Error())
+		errCode = -2
+		return
+	}
 
-		// Write File Content to temp local storage location
-		fileMeta.Location = cfg.TempLocalRootDir + fileMeta.FileSha1
-		newFile, err := os.Create(fileMeta.Location)
-		if err != nil {
-			fmt.Printf("Failed to create file, err:%s\n", err.Error())
-			return
-		}
-		defer newFile.Close()
+	// Construct File Meta Info
+	fileMeta := meta.FileMeta{
+		FileName: head.Filename,
+		FileSha1: util.Sha1(buf.Bytes()),
+		FileSize: int64(len(buf.Bytes())),
+		UploadAt: time.Now().Format("2006-01-02 15:04:05"),
+	}
 
-		nByte, err := newFile.Write(buf.Bytes())
-		if int64(nByte) != fileMeta.FileSize || err != nil {
-			fmt.Printf("Failed to save data into file, writtenSize:%d, err:%s\n", nByte, err.Error())
-			return
-		}
+	// Write File Content to temp local storage location
+	fileMeta.Location = cfg.TempLocalRootDir + fileMeta.FileSha1
+	newFile, err := os.Create(fileMeta.Location)
+	if err != nil {
+		fmt.Printf("Failed to create file, err:%s\n", err.Error())
+		errCode = -3
+		return
+	}
+	defer newFile.Close()
 
-		// Store into Ceph/OSS
-		newFile.Seek(0, 0)
-		if cfg.CurrentStoreType == cmn.StoreCeph {
-			// Write File into Ceph
-			data, _ := ioutil.ReadAll(newFile)
-			cephPath := "/ceph/" + fileMeta.FileSha1
-			_ = ceph.PutObject("userfile", cephPath, data)
-			fileMeta.Location = cephPath
-		} else if cfg.CurrentStoreType == cmn.StoreOSS {
-			ossPath := "oss/" + fileMeta.FileSha1
-			if !cfg.AsyncTransferEnable {
-				// Write File into OSS Synchronously
-				err = oss.Bucket().PutObject(ossPath, newFile)
-				if err != nil {
-					fmt.Println(err.Error())
-					w.Write([]byte("Upload failed!"))
-					return
-				}
-				fileMeta.Location = ossPath
-			} else {
-				data := mq.TransferData{
-					FileHash:      fileMeta.FileSha1,
-					CurLocation:   fileMeta.Location,
-					DestLocation:  ossPath,
-					DestStoreType: cmn.StoreOSS,
-				}
-				pubData, _ := json.Marshal(data)
-				pubSuc := mq.Publish(
-					cfg.TransExchangeName,
-					cfg.TransOSSRoutingKey,
-					pubData,
-				)
-				if !pubSuc {
-					// TODO: Fail to Publish, Retry later
-				}
+	nByte, err := newFile.Write(buf.Bytes())
+	if int64(nByte) != fileMeta.FileSize || err != nil {
+		fmt.Printf("Failed to save data into file, writtenSize:%d, err:%s\n", nByte, err.Error())
+		errCode = -4
+		return
+	}
+
+	// Store into Ceph/OSS
+	newFile.Seek(0, 0)
+	if cfg.CurrentStoreType == cmn.StoreCeph {
+		// Write File into Ceph
+		data, _ := ioutil.ReadAll(newFile)
+		cephPath := "/ceph/" + fileMeta.FileSha1
+		_ = ceph.PutObject("userfile", cephPath, data)
+		fileMeta.Location = cephPath
+	} else if cfg.CurrentStoreType == cmn.StoreOSS {
+		ossPath := "oss/" + fileMeta.FileSha1
+		if !cfg.AsyncTransferEnable {
+			// Write File into OSS Synchronously
+			err = oss.Bucket().PutObject(ossPath, newFile)
+			if err != nil {
+				fmt.Println(err.Error())
+				errCode = -5
+				return
+			}
+			fileMeta.Location = ossPath
+		} else {
+			data := mq.TransferData{
+				FileHash:      fileMeta.FileSha1,
+				CurLocation:   fileMeta.Location,
+				DestLocation:  ossPath,
+				DestStoreType: cmn.StoreOSS,
+			}
+			pubData, _ := json.Marshal(data)
+			pubSuc := mq.Publish(
+				cfg.TransExchangeName,
+				cfg.TransOSSRoutingKey,
+				pubData,
+			)
+			if !pubSuc {
+				// TODO: Fail to Publish, Retry later
 			}
 		}
-		fmt.Printf("\nNew File %s Created in %s", fileMeta.FileSha1, fileMeta.Location)
-		// meta.UpdateFileMeta(fileMeta)
-		_ = meta.UpdateFileMetaDB(fileMeta)
+	}
 
-		//Update User File Table in Database
-		r.ParseForm()
-		username := r.Form.Get("username")
-		suc := dblayer.OnUserFileUploadFinished(username, fileMeta.FileSha1,
-			fileMeta.FileName, fileMeta.FileSize)
-		if suc {
-			http.Redirect(w, r, "/static/view/home.html", http.StatusFound)
-		} else {
-			w.Write([]byte("Upload Failed."))
-		}
+	fmt.Printf("\nNew File %s Created in %s", fileMeta.FileSha1, fileMeta.Location)
+	// meta.UpdateFileMeta(fileMeta)
+	_ = meta.UpdateFileMetaDB(fileMeta)
+
+	//Update User File Table in Database
+	username := c.Request.FormValue("username")
+	suc := dblayer.OnUserFileUploadFinished(username, fileMeta.FileSha1,
+		fileMeta.FileName, fileMeta.FileSize)
+	if suc {
+		c.Redirect(http.StatusFound, "/static/view/home.html")
+	} else {
+		errCode = -6
 	}
 }
 
 // UploadSuccessHandler
-func UploadSuccessHandler(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Upload finished")
+func UploadSuccessHandler(c *gin.Context) {
+	c.JSON(http.StatusOK,
+		gin.H{
+			"code": 0,
+			"msg":  "Upload Finish!",
+		})
 }
 
 // GetFileMetaHandler: get file meta data
-func GetFileMetaHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	filehash := r.Form["filehash"][0]
-
-	// fMeta := meta.GetFileMeta(filehash)
+func GetFileMetaHandler(c *gin.Context) {
+	filehash := c.Request.FormValue("filehash")
 	fMeta, err := meta.GetFileMetaDB(filehash)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{
+				"code": -2,
+				"msg":  "Upload failed!",
+			})
 		return
 	}
-	data, err := json.Marshal(fMeta)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+
+	if fMeta != nil {
+		data, err := json.Marshal(fMeta)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError,
+				gin.H{
+					"code": -3,
+					"msg":  "Upload failed!",
+				})
+			return
+		}
+		c.Data(http.StatusOK, "application/json", data)
+	} else {
+		c.JSON(http.StatusOK,
+			gin.H{
+				"code": -4,
+				"msg":  "No such file",
+			})
 	}
-	w.Write(data)
 }
 
 // FileQueryHandler: Query Batch File Metas
