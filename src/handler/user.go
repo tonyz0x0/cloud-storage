@@ -1,117 +1,115 @@
 package handler
 
 import (
+	"cloud-storage/src/common"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
-	dblayer "../../db"
-	"../util"
+	dblayer "cloud-storage/db"
+
+	"cloud-storage/src/util"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
 	pwdSalt = "#739"
 )
 
-// SignUpHandler: Handle User Sign Up Request
-func SignUpHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		// TODO: Imporove the front end
-		data, err := ioutil.ReadFile("./static/view/signup.html")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Write(data)
-		return
-	}
+// SignUpHandler: Handle User Sign Up Get Request
+func SignUpHandler(c *gin.Context) {
+	// TODO: Imporove the front end
+	c.Redirect(http.StatusFound, "/static/view/signup.html")
+}
 
-	r.ParseForm()
-
-	username := r.Form.Get("username")
-	passwd := r.Form.Get("password")
+// DoSignupHandler: Post Reuqest
+func DoSignupHandler(c *gin.Context) {
+	username := c.Request.FormValue("username")
+	passwd := c.Request.FormValue("password")
 
 	if len(username) < 3 || len(passwd) < 5 {
-		w.Write([]byte("Invalid parameter"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "Invalid Parameters",
+			"code": common.StatusParamInvalid,
+		})
 		return
 	}
 
 	encPasswd := util.Sha1([]byte(passwd + pwdSalt))
 	suc := dblayer.UserSignup(username, encPasswd)
 	if suc {
-		w.Write([]byte("SUCCESS"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "Sign Up Success",
+			"code": common.StatusOK,
+		})
 	} else {
-		w.Write([]byte("FAILED"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "Sign Up Fail",
+			"code": common.StatusRegisterFailed,
+		})
 	}
 }
 
-// SignInHandler: Sign In Handler
-func SignInHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		data, err := ioutil.ReadFile("./static/view/signin.html")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Write(data)
-		// http.Redirect(w, r, "/static/view/signin.html", http.StatusFound)
-		return
-	}
-	r.ParseForm()
-	username := r.Form.Get("username")
-	passwd := r.Form.Get("password")
+// SignInHandler: Handle User Sign In Get Request
+func SignInHandler(c *gin.Context) {
+	c.Redirect(http.StatusFound, "/static/view/signin.html")
+}
 
-	encPasswd := util.Sha1([]byte(passwd + pwdSalt))
+func DoSignInHandler(c *gin.Context) {
+	username := c.Request.FormValue("username")
+	password := c.Request.FormValue("password")
 
-	// Validate Password
+	encPasswd := util.Sha1([]byte(password + pwdSalt))
+
+	// 1. Validate Password
 	pwdChecked := dblayer.UserSignin(username, encPasswd)
 	if !pwdChecked {
-		w.Write([]byte("FAILED"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "Sign In Fail",
+			"code": common.StatusLoginFailed,
+		})
 		return
 	}
 
-	// Generate Token
+	// 2. Generate Token
 	token := GenToken(username)
 	upRes := dblayer.UpdateToken(username, token)
 	if !upRes {
-		w.Write([]byte("FAILED"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "Sign In Fail",
+			"code": common.StatusLoginFailed,
+		})
 		return
 	}
 
-	// Redirect to Home Page
+	// 3. Redirect to Home Page
 	resp := util.RespMsg{
-		Code: 0,
-		Msg:  "OK",
+		Code: int(common.StatusOK),
+		Msg:  "Sign In Success",
 		Data: struct {
 			Location string
 			Username string
 			Token    string
 		}{
-			Location: "http://" + r.Host + "/static/view/home.html",
+			Location: "/static/view/home.html",
 			Username: username,
 			Token:    token,
 		},
 	}
-	w.Write(resp.JSONBytes())
+	c.Data(http.StatusOK, "application/json", resp.JSONBytes())
 }
 
-func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
+// UserInfoHandler: User Info
+func UserInfoHandler(c *gin.Context) {
 	// Parse the Request Parameters
-	r.ParseForm()
-	username := r.Form.Get("username")
-	token := r.Form.Get("token")
-
-	// Verify Token
-	isValidToken := IsTokenValid(token)
-	if !isValidToken {
-		w.WriteHeader(http.StatusForbidden)
-	}
+	username := c.Request.FormValue("username")
 
 	// Query User Info
 	user, err := dblayer.GetUserInfo(username)
 	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
+		c.JSON(http.StatusForbidden,
+			gin.H{})
 		return
 	}
 
@@ -121,7 +119,30 @@ func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 		Msg:  "OK",
 		Data: user,
 	}
-	w.Write(resp.JSONBytes())
+	c.Data(http.StatusOK, "application/json", resp.JSONBytes())
+}
+
+// UserExistsHandler: Check UserName is existed or not
+func UserExistsHandler(c *gin.Context) {
+	// Parse the Request Parameters
+	username := c.Request.FormValue("username")
+
+	// Get Information
+	exists, err := dblayer.UserExist(username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{
+				"code": common.StatusServerError,
+				"msg":  "server error",
+			})
+	} else {
+		c.JSON(http.StatusOK,
+			gin.H{
+				"code":   common.StatusOK,
+				"msg":    "ok",
+				"exists": exists,
+			})
+	}
 }
 
 // GenToken

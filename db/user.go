@@ -3,8 +3,18 @@ package db
 import (
 	"fmt"
 
-	mydb "./mysql"
+	mydb "cloud-storage/db/mysql"
 )
+
+// User Model
+type User struct {
+	Username     string
+	Email        string
+	Phone        string
+	SignupAt     string
+	LastActiveAt string
+	Status       int
+}
 
 // UserSignup: User Sign Up
 func UserSignup(username string, passwd string) bool {
@@ -75,15 +85,6 @@ func UpdateToken(username string, token string) bool {
 	return true
 }
 
-type User struct {
-	Username     string
-	Email        string
-	Phone        string
-	SignupAt     string
-	LastActiveAt string
-	Status       int
-}
-
 // GetUserInfo: Query User Info
 func GetUserInfo(username string) (User, error) {
 	user := User{}
@@ -102,4 +103,22 @@ func GetUserInfo(username string) (User, error) {
 		return user, err
 	}
 	return user, nil
+}
+
+// UserExist: Query User is existed or not
+func UserExist(username string) (bool, error) {
+
+	stmt, err := mydb.DBConn().Prepare(
+		"select 1 from tbl_user where user_name=? limit 1")
+	if err != nil {
+		fmt.Println(err.Error())
+		return false, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(username)
+	if err != nil {
+		return false, err
+	}
+	return rows.Next(), nil
 }

@@ -6,7 +6,8 @@ import (
 	"log"
 	"os"
 
-	cfg "../../config"
+	cfg "cloud-storage/config"
+
 	_ "github.com/go-sql-driver/mysql" // annonymous import
 )
 
@@ -38,7 +39,6 @@ func ParseRows(rows *sql.Rows) []map[string]interface{} {
 	record := make(map[string]interface{})
 	records := make([]map[string]interface{}, 0)
 	for rows.Next() {
-		//将行数据保存到record字典
 		err := rows.Scan(scanArgs...)
 		checkErr(err)
 
