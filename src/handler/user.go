@@ -92,7 +92,7 @@ func DoSignInHandler(c *gin.Context) {
 			Username string
 			Token    string
 		}{
-			Location: "./static/view/home.html",
+			Location: "/static/view/home.html",
 			Username: username,
 			Token:    token,
 		},

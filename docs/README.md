@@ -56,6 +56,12 @@ If you want to stop slave database:
 mysql> stop slave io_thread for channel ''
 ```
 
+Start two database containers:
+
+```sh
+$ docker container start <docker ID>
+```
+
 ## Ceph Config
 
 ```sh
@@ -94,4 +100,18 @@ $ sudo chmod 755 /data/rabbitmq/
 
 # Remember to config path /data to file sharing in docker
 $ docker run -d --hostname rabbit-node1 --name rabbit-node1 -p 5672:5672 -p 15672:15672 -p 25672:25672 -v /data/rabbitmq:/var/lib/rabbitmq rabbitmq:management
+
+# Start RabbitMQ Container
+$ docker container start rabbitmq:management
+```
+
+# Protocol Buffers Compiler
+
+# Consul
+
+Install Consul with Docker
+```sh
+$ docker pull consul:1.4.5
+
+$ docker run --name consul1 -d -p 8500:8500 -p 8300:8300 -p 8301:8301 -p 8302:8302 -p 8600:8600 consul:1.4.5 agent -server -bootstrap -ui -bind=0.0.0.0 -client=0.0.0.0
 ```

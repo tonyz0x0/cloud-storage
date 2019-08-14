@@ -175,7 +175,7 @@ func GetFileMetaHandler(c *gin.Context) {
 		return
 	}
 
-	if fMeta != nil {
+	if err != nil {
 		data, err := json.Marshal(fMeta)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError,

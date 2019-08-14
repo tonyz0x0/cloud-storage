@@ -6,18 +6,20 @@ var done chan bool
 
 // StartConsume: Consume Message
 func StartConsume(
-	qName,
-	cName string,
-	callback func(msg []byte) bool,
+	qName, // queue name
+	cName string, // consumer name
+	callback func(msg []byte) bool, // callback function
 ) {
+
 	msgs, err := channel.Consume(
 		qName,
 		cName,
 		true,  // auto-ack
-		false, // exclusive
+		false, // exclusive consumer
 		false, // no-local
 		false, // no-wait
 		nil)
+
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -26,6 +28,7 @@ func StartConsume(
 	done = make(chan bool)
 
 	go func() {
+		// get data from channel
 		for d := range msgs {
 			processErr := callback(d.Body)
 			if processErr {
