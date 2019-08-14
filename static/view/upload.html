@@ -57,9 +57,14 @@
 
   function onUpload() {
     var upUrl = "/file/upload?" + queryParams();
-    var upEntry = localStorage.getItem("uploadEntry");
-    if (upEntry != "") {
-      upUrl = "http://" + upEntry + "/file/upload?" + queryParams();
+    // var upEntry = localStorage.getItem("uploadEntry");
+    var upEntry = "localhost:28080";
+    if (upEntry != "" ) {
+      if (upEntry.indexOf("http:")>=0) {
+        upUrl = upEntry + "/file/upload?" + queryParams();
+      } else {
+        upUrl = "http://" + upEntry + "/file/upload?" + queryParams();
+      }
     }
     $.ajax({
       url: upUrl,

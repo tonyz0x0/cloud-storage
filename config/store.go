@@ -1,12 +1,18 @@
 package config
 
 import (
-	cmn "cloud-storage/src/common"
+	cmn "filestore-server/common"
 )
 
 const (
-	// TempLocalRootDir: Temporal Local Storage Root
-	TempLocalRootDir = "/data/fileserver/"
-	// CurrentStoreType: Current Store Type, Ceph or OSS
-	CurrentStoreType = cmn.StoreOSS
+	// TempLocalRootDir : 本地临时存储地址的路径
+	TempLocalRootDir = "/Users/bigtony/tmp/fileserver/"
+	// TempPartRootDir : 分块文件在本地临时存储地址的路径
+	TempPartRootDir = "/Users/bigtony/tmp/fileserver_part/"
+	// CephRootDir : Ceph的存储路径prefix
+	CephRootDir = "/ceph"
+	// OSSRootDir : OSS的存储路径prefix
+	OSSRootDir = "oss/"
+	// CurrentStoreType : 设置当前文件的存储类型
+	CurrentStoreType = cmn.StoreLocal
 )
